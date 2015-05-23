@@ -15,7 +15,16 @@
               <a href="#" id="ghsubmitbtn" ng-click="search()" class="btn btn-default">Buscar</a>
            </span>
     </div>
+    <select ng-model="country">
+        <option>bolivia</option>
+        <option>CA</option>
+        <option>oruro</option>
+        <option>USA</option>
+    </select>
 </form>
+
+<br/>
+<img ng-src="{{user_image}}" height="200">
 
 <script type="text/javascript">
     angular.module("GithubByLocation", []).controller(
@@ -23,9 +32,16 @@
                 $scope.hello = "Hola Mundo";
                 $scope.country = "bolivia";
                 $scope.flag = "http://www.nationsonline.org/flags/" + $scope.country + "_flag.gif";
+                $scope.user_image = '';
 
                 $scope.search =  function(){
-                    console.log("BUSCANDO....");
+                    $http.get("https://api.github.com/search/users?q=" + $scope.username + "+location:" + $scope.country)
+                            .success(function(data){
+                                $scope.user_image = data.items[0].avatar_url;
+
+                            }).error(function(data){
+                                console.log(data);
+                            });
                 };
             }
     );
