@@ -1,63 +1,251 @@
 <!DOCTYPE html>
-<html ng-app="GithubByLocation">
+<html ng-app="GithubLocation">
 <head>
     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.3.15/angular.min.js"></script>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html">
+    <title>Github Location</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+    <link rel="stylesheet" href="style.css">
 </head>
-<body ng-controller="GithubCtrl">
 
-<img ng-src="{{flag}}" height="32">
+<body ng-controller="GitHubCtrl" ng-init="loadBy(1)">
+<a href="https://github.com/tiveor/github-api-test">
+    <img class="ribbon-right"
+         src="https://camo.githubusercontent.com/38ef81f8aca64bb9a64448d0d70f1308ef5341ab/68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f6769746875622f726962626f6e732f666f726b6d655f72696768745f6461726b626c75655f3132313632312e706e67"
+         alt="Fork me on GitHub"
+         data-canonical-src="https://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png"></a>
 
-<h1>Github {{country}}</h1>
-<form ng-submit="search()">
-    <div>
-        <input type="text" id="ghusername" ng-model="username" placeholder="Cuenta github ">
-           <span class="input-group-btn">
-              <a href="#" id="ghsubmitbtn" ng-click="search()" class="btn btn-default">Buscar</a>
-           </span>
+<div id="w">
+    <div class="container">
+        <div class="pull-left header-left">
+            <h1><img ng-src="{{flag}}" height="32"> Github {{country}}</h1>
+            <h4>{{total_count}} desarollladores en {{country}} </h4>
+        </div>
+        <form ng-submit="search()">
+            <div class="input-group boxgroup">
+
+                <input type="text" id="ghusername" ng-model="username" class="form-control"
+                       placeholder="Cuenta github ">
+               <span class="input-group-btn">
+                  <a href="#" id="ghsubmitbtn" ng-click="search()" class="btn btn-default">Buscar</a>
+               </span>
+
+            </div>
+        </form>
+
+        <div class="btn-group">
+            <button class="btn btn-default dropdown-toggle" data-toggle="dropdown">País <span class="caret"></span>
+            </button>
+            <ul class="dropdown-menu" role="menu">
+                <li ng-repeat="coun in countries"><a href="#" ng-click="setCountry(coun)">{{coun}}</a></li>
+            </ul>
+        </div>
+
+        <span class="label label-default font-highlight"> {{country}}</span>
+
+        <div class="btn-group">
+            <button class="btn btn-default dropdown-toggle" data-toggle="dropdown">Ordernar <span class="caret"></span>
+            </button>
+            <ul class="dropdown-menu" role="menu">
+                <li><a href="#" ng-click="sort('follow')">Seguidores</a></li>
+                <li><a href="#" ng-click="sort('repo')">Repositorios</a></li>
+                <li><a href="#" ng-click="sort('join')">Siguiendo</a></li>
+            </ul>
+        </div>
+        <span class="label label-default font-highlight"> {{sortbyText}}</span>
     </div>
-    <select ng-model="country">
-        <option>bolivia</option>
-        <option>CA</option>
-        <option>oruro</option>
-        <option>USA</option>
-    </select>
-</form>
+    <div id="ghapidata" class="clearfix"></div>
+</div>
+<div class="container">
+    <div ng-show="userNotFound">
+        <h2>No se encontró</h2>
+    </div>
+</div>
 
-<br/>
-<img ng-src="{{user_image}}" height="200">
-<h3>{{user.name}}</h3>
-<br/>
-Repositorios: {{user.public_repos}}<br/>
-Seguidores: {{user.followers}}<br/>
-Siguiendo: {{user.following}}<br/>
+<div class="listbo">
+    <div ng-show="listbo" class="container">
+        <div class="innerbo">
+            <div class="my-col-30" ng-repeat="item in items">
+                <a href="#" ng-click='loadUserInfo(item.login)'>
+                    <img src="{{ item.avatar_url }}" width="150" height="150" alt="{{ item.login }}"
+                         class="img-thumbnail"></a>
+                </a>
+                <h6><a href="{{item.html_url}}" target="_blank">{{item.login}}</a></h6>
+            </div>
+        </div>
+    </div>
+</div>
 
+<div class="paginatebo">
+    <div class="container">
+        <a href="#" ng-click="prev()" class="btn btn-default">Prev</a>
+        <a href="#" ng-class="{disabled: ($index+1)==currentPage}" class="btn btn-default" ng-click="loadBy($index+1)"
+           ng-repeat="x in getTimes(numPages) track by $index">{{$index+1}}</a>
+        <a href="#" ng-click="next()" class="btn btn-default">Next</a>
+    </div>
+</div>
+</div>
+
+<!-- START Modal -->
+<div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
+                        aria-hidden="true">&times;</span></button>
+                <h3 class="modal-title" id="myModalLabel">
+                    {{user.name}}
+                    <span class="smallname">(<a href="{{user.html_url}}" target="_blank">{{user.login}}</a>)</span>
+                </h3>
+            </div>
+            <div class="modal-body">
+                <div ng-show="loaded">
+                    <div class="row">
+                        <div class="col-md-5 ghcontent">
+                            <div class="avi">
+                                <a href="{{ user.html_url }}" target="_blank">
+                                    <img src="{{ user.avatar_url }}" width="250" height="250" alt="{{ user.login }}"
+                                         class="img-thumbnail"></a>
+                            </div>
+                            <br/>
+                            <table class="table table-condensed">
+                                <thead>
+                                <th>{{ user.followers }}</h3></th>
+                                <th>{{ user.following }}</th>
+                                <th>{{ user.public_repos }}</th>
+                                </thead>
+                                <tbody>
+                                <tr>
+                                    <td>Seguidores</td>
+                                    <td>Siguiendo</td>
+                                    <td>Repositorios</td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="col-md-7 repolist norepo" >
+                            <p ng-hide="reposFound">No se encontraron repositorios</p>
+                            <div ng-show="reposFound">
+                                <p><strong>Repositorios:</strong></p>
+                                <div ng-repeat="repo in repos">
+                                    <a href="{{repo.html_url}}" target="_blank"> {{repo.name}} </a><br/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- END MODAL -->
 
 
 <script type="text/javascript">
-    angular.module("GithubByLocation", []).controller(
-            "GithubCtrl", function ($scope, $http) {
-                $scope.hello = "Hola Mundo";
-                $scope.country = "bolivia";
-                $scope.flag = "http://www.nationsonline.org/flags/" + $scope.country + "_flag.gif";
-                $scope.user_image = '';
+    angular.module('GithubLocation', []).controller(
+            'GitHubCtrl',
 
-                $scope.search =  function(){
-                    $http.get("https://api.github.com/search/users?q=" + $scope.username + "+location:" + $scope.country)
-                            .success(function(data){
-                                $scope.user_image = data.items[0].avatar_url;
-                                $scope.loadUserInfo(data.items[0].login);
-                            }).error(function(data){
-                                console.log(data);
-                            });
+            function ($scope, $http) {
+                $scope.currentPage = 1;
+                $scope.maxSize = 25;
+                $scope.total_count = 0;
+                $scope.numPages = 0;
+                $scope.countries = ['bolivia', 'chile', 'argentina', 'brazil', 'usa', 'colombia', 'venezuela', 'peru', 'ecuador', 'paraguay', 'uruguay', 'mexico'];
+                $scope.country = 'bolivia';
+                $scope.flag = "http://www.nationsonline.org/flags/" + $scope.country + "_flag.gif";
+                $scope.items = [];
+
+
+                $scope.sortby = "followers";
+                $scope.sortbyText = "Seguidores";
+
+
+                $scope.getTimes = function (n) {
+                    //Just 1000 first can be returned
+                    return new Array(Math.min(1000 / $scope.maxSize, n));
                 };
+
+                $scope.next = function () {
+                    $scope.loadBy($scope.currentPage + 1);
+                }
+
+                $scope.prev = function () {
+                    $scope.loadBy($scope.currentPage - 1);
+                }
+
+                $scope.sort = function (sort) {
+                    switch (sort) {
+                        case 'follow':
+                            $scope.sortby = 'followers';
+                            $scope.sortbyText = 'Seguidores';
+                            break;
+                        case 'join':
+                            $scope.sortby = 'joined';
+                            $scope.sortbyText = 'Siguiendo';
+                            break;
+                        case 'repo':
+                            $scope.sortby = 'repositories';
+                            $scope.sortbyText = 'Repositorios';
+                            break;
+                    }
+                    $scope.loadBy($scope.currentPage);
+                }
+
+                $scope.setCountry = function (country) {
+                    $scope.country = country;
+                    $scope.flag = "http://www.nationsonline.org/flags/" + $scope.country + "_flag.gif";
+                    $scope.loadBy($scope.currentPage);
+                }
+
+
+                $scope.loadBy = function (page) {
+                    $scope.currentPage = page;
+                    $scope.listbo = false;
+                    $http.get("https://api.github.com/search/users?q=+location:" + $scope.country + "&page=" + page + "&per_page=" + $scope.maxSize + "&sort=" + $scope.sortby)
+                            .success(function (data) {
+                                $scope.listbo = true;
+                                $scope.total_count = data.total_count;
+                                $scope.items = data.items;
+                                $scope.numPages = Math.ceil($scope.total_count / $scope.maxSize);
+                            })
+                            .error(function () {
+
+                            });
+                }
+
+                $scope.search = function () {
+                    $scope.userNotFound = false;
+                    $scope.loaded = false;
+                    $http.get("https://api.github.com/search/users?q=" + $scope.username + "+location:" + $scope.country)
+                            .success(function (data) {
+                                $scope.listbo = true;
+                                $scope.total_count = data.total_count;
+                                $scope.items = data.items;
+                                $scope.numPages = Math.ceil($scope.total_count / $scope.maxSize);
+                            })
+                            .error(function () {
+                                $scope.userNotFound = true;
+                            });
+                }
+
 
                 $scope.loadUserInfo = function (username) {
                     $scope.userNotFound = false;
                     $scope.loaded = false;
                     $http.get("https://api.github.com/users/" + username)
                             .success(function (data) {
+                                if (data.name == "")
+                                    data.name = data.login;
                                 $scope.user = data;
                                 $scope.loaded = true;
+                                $('#myModal').modal('show');
                             })
                             .error(function () {
                                 $scope.userNotFound = true;
@@ -68,9 +256,9 @@ Siguiendo: {{user.following}}<br/>
                         $scope.reposFound = data.length > 0;
                     });
                 }
-
             }
     );
 </script>
+
 </body>
 </html>
